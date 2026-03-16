@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="panel panel--narrow">
+    <div class="section-heading">
+        <div>
+            <h1>{{ title }}</h1>
+            <p>{{ message }}</p>
+        </div>
+    </div>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        <div class="form-actions">
+            <a href="{{ cancel_url }}" class="button button--ghost">取消</a>
+            <button type="submit" class="button button--danger">確認刪除</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

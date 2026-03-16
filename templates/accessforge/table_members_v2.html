@@ -1,0 +1,59 @@
+{% extends "app_base.html" %}
+
+{% block title %}Roles | {{ table.name }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="panel-grid panel-grid--two">
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h1>Roles for {{ table.name }}</h1>
+                <p>Assign viewer or editor access. The table owner always keeps owner access.</p>
+            </div>
+        </div>
+        <div class="member-list">
+            {% for membership in memberships %}
+                <div class="member-row">
+                    <div>
+                        <strong>{{ membership.user.username }}</strong>
+                        <p>{{ membership.user.email|default:"No email" }}</p>
+                    </div>
+                    <div class="member-row__actions">
+                        <span class="pill">{{ membership.role }}</span>
+                        {% if membership.user_id != table.owner_id %}
+                            <a href="{% url 'accessforge:member-delete' table.slug membership.pk %}" class="danger-link">Remove</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <p class="muted">No extra members yet.</p>
+            {% endfor %}
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>Add or update member</h2>
+                <p>If the username exists, the role is updated. Otherwise a new login is created.</p>
+            </div>
+        </div>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-row">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+                </div>
+            {% endfor %}
+            {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+            <div class="form-actions">
+                <a href="{{ table.get_absolute_url }}" class="button button--ghost">Back</a>
+                <button type="submit" class="button">Save member</button>
+            </div>
+        </form>
+    </article>
+</section>
+{% endblock %}

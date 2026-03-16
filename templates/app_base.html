@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}AccessForge{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div class="topbar__inner">
+                <a href="{% if request.user.is_authenticated %}{% url 'accessforge:dashboard' %}{% else %}{% url 'accessforge:login' %}{% endif %}" class="brand">
+                    <span class="brand__mark">AF</span>
+                    <span>
+                        <strong>AccessForge</strong>
+                        <small>Access-style database workspace on Django and PostgreSQL</small>
+                    </span>
+                </a>
+                <nav class="topbar__nav">
+                    {% if request.user.is_authenticated %}
+                        <a href="{% url 'accessforge:dashboard' %}">Dashboard</a>
+                        <a href="{% url 'accessforge:table-create' %}" class="button button--small">New table</a>
+                        <a href="/admin/">Admin</a>
+                        <span class="user-pill">{{ request.user.username }}</span>
+                        <form method="post" action="{% url 'accessforge:logout' %}" class="inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="button button--ghost button--small">Log out</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'accessforge:login' %}" class="button button--small">Log in</a>
+                    {% endif %}
+                </nav>
+            </div>
+        </header>
+
+        <main class="content">
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="message message--{{ message.tags|default:'info' }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

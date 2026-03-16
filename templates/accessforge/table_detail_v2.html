@@ -1,0 +1,192 @@
+{% extends "app_base.html" %}
+
+{% block title %}{{ table.name }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="hero hero--compact">
+    <div>
+        <span class="eyebrow">Table workspace</span>
+        <h1>{{ table.name }}</h1>
+        <p>{{ table.description|default:"No description yet." }}</p>
+    </div>
+    <div class="hero__actions">
+        {% if can_edit %}
+            <a href="{% url 'accessforge:record-create' table.slug %}" class="button">New record</a>
+            <a href="{% url 'accessforge:import-data' table.slug %}" class="button button--ghost">Import CSV/XLSX</a>
+        {% endif %}
+        <a href="{% url 'accessforge:query-builder' table.slug %}" class="button button--ghost">Query builder</a>
+        <a href="{% url 'accessforge:export-csv' table.slug %}" class="button button--ghost">Export CSV</a>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="tab-list">
+        {% if can_manage %}<a href="{% url 'accessforge:field-create' table.slug %}">Add field</a>{% endif %}
+        {% if can_manage %}<a href="{% url 'accessforge:table-update' table.slug %}">Table settings</a>{% endif %}
+        {% if can_manage %}<a href="{% url 'accessforge:table-members' table.slug %}">Roles</a>{% endif %}
+        {% if can_manage %}<a href="{% url 'accessforge:form-designer' table.slug %}">Form designer</a>{% endif %}
+    </div>
+</section>
+
+<section class="panel-grid panel-grid--two">
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>Field schema</h2>
+                <p>Fields control data validation, list rendering, queries, imports, and generated forms.</p>
+            </div>
+            {% if can_manage %}
+                <a href="{% url 'accessforge:field-create' table.slug %}" class="button button--small">Add field</a>
+            {% endif %}
+        </div>
+        {% if fields %}
+            <div class="schema-list">
+                {% for field in fields %}
+                    <div class="schema-item">
+                        <div>
+                            <strong>{{ field.name }}</strong>
+                            <p>{{ field.get_field_type_display }} · slug: {{ field.slug }}</p>
+                            {% if field.related_table %}
+                                <p>Relates to {{ field.related_table.name }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="schema-item__actions">
+                            {% if field.required %}<span class="pill">Required</span>{% endif %}
+                            {% if can_manage %}
+                                <a href="{% url 'accessforge:field-update' table.slug field.pk %}">Edit</a>
+                                <a href="{% url 'accessforge:field-delete' table.slug field.pk %}" class="danger-link">Delete</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>No fields defined</h3>
+                <p>Start by creating fields so this table can accept records.</p>
+            </div>
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>Relationships and access</h2>
+                <p>Review outgoing links, incoming links, and who can work in this table.</p>
+            </div>
+        </div>
+        <div class="card-stack">
+            <div class="mini-card">
+                <h3>Outgoing relations</h3>
+                {% if outgoing_relations %}
+                    <ul class="plain-list">
+                        {% for field in outgoing_relations %}
+                            <li>{{ field.name }} -> {{ field.related_table.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="muted">No relation fields yet.</p>
+                {% endif %}
+            </div>
+            <div class="mini-card">
+                <h3>Incoming relations</h3>
+                {% if incoming_relations %}
+                    <ul class="plain-list">
+                        {% for field in incoming_relations %}
+                            <li>{{ field.table.name }}.{{ field.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="muted">Nothing else points to this table yet.</p>
+                {% endif %}
+            </div>
+            <div class="mini-card">
+                <h3>Members</h3>
+                <ul class="plain-list">
+                    {% for membership in memberships %}
+                        <li>{{ membership.user.username }} · {{ membership.role }}</li>
+                    {% empty %}
+                        <li>{{ table.owner.username }} · owner</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% if can_manage %}
+            <div class="form-actions form-actions--left">
+                <a href="{% url 'accessforge:table-members' table.slug %}" class="button button--ghost">Manage roles</a>
+                <a href="{% url 'accessforge:form-designer' table.slug %}" class="button button--ghost">Design form</a>
+            </div>
+        {% endif %}
+    </article>
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>Saved queries</h2>
+            <p>Reusable rule sets for filtering records beyond simple text search.</p>
+        </div>
+        <a href="{% url 'accessforge:query-builder' table.slug %}" class="button button--small">Open query builder</a>
+    </div>
+    {% if saved_queries %}
+        <ul class="plain-list plain-list--cards">
+            {% for query in saved_queries %}
+                <li>
+                    <strong>{{ query.name }}</strong>
+                    <span>{{ query.get_match_mode_display }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted">No saved queries yet.</p>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>Records</h2>
+            <p>Quick search scans the displayed values for all fields in this table.</p>
+        </div>
+        <form method="get" class="search-form">
+            <input type="search" name="q" value="{{ search_query }}" placeholder="Search records">
+            <button type="submit" class="button button--small">Search</button>
+        </form>
+    </div>
+    {% if fields %}
+        <div class="data-table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for field in fields %}
+                            <th>{{ field.name }}</th>
+                        {% endfor %}
+                        {% if can_edit %}<th>Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in record_rows %}
+                        <tr>
+                            {% for cell in row.cells %}
+                                <td>{{ cell }}</td>
+                            {% endfor %}
+                            {% if can_edit %}
+                                <td class="actions-cell">
+                                    <a href="{% url 'accessforge:record-update' table.slug row.record.pk %}">Edit</a>
+                                    <a href="{% url 'accessforge:record-delete' table.slug row.record.pk %}" class="danger-link">Delete</a>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="{{ fields|length|add:'1' }}" class="muted center">No matching records.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="muted">Create fields first, then add records.</p>
+    {% endif %}
+</section>
+{% endblock %}

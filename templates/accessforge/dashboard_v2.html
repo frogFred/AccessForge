@@ -1,0 +1,99 @@
+{% extends "app_base.html" %}
+
+{% block title %}Dashboard | AccessForge{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <span class="eyebrow">Access replacement workspace</span>
+        <h1>Tables, permissions, relations, queries, imports, and form design in one place.</h1>
+        <p>Use Django for the app layer, PostgreSQL for storage, and Docker Compose for deployment. This workspace now supports relation fields, saved query rules, spreadsheet imports, role-based access, and custom entry forms.</p>
+    </div>
+    <div class="hero__actions">
+        <a href="{% url 'accessforge:table-create' %}" class="button">Create table</a>
+        <a href="/admin/" class="button button--ghost">Open admin</a>
+    </div>
+</section>
+
+<section class="panel-grid">
+    <article class="panel panel--stat">
+        <span>Accessible tables</span>
+        <strong>{{ tables|length }}</strong>
+    </article>
+    <article class="panel panel--stat">
+        <span>Recent record activity</span>
+        <strong>{{ recent_records|length }}</strong>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>Workspace tables</h2>
+            <p>Open a table to manage fields, records, memberships, imports, queries, and form layouts.</p>
+        </div>
+        <a href="{% url 'accessforge:table-create' %}" class="button button--small">New table</a>
+    </div>
+
+    {% if tables %}
+        <div class="table-cards">
+            {% for table in tables %}
+                <a href="{{ table.get_absolute_url }}" class="table-card">
+                    <div>
+                        <h3>{{ table.name }}</h3>
+                        <p>{{ table.description|default:"No description yet." }}</p>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>Fields</dt>
+                            <dd>{{ table.field_count }}</dd>
+                        </div>
+                        <div>
+                            <dt>Records</dt>
+                            <dd>{{ table.record_count }}</dd>
+                        </div>
+                    </dl>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h3>No tables yet</h3>
+            <p>Create your first table to start building an Access-style data app.</p>
+        </div>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>Recent updates</h2>
+            <p>The latest records changed across your accessible tables.</p>
+        </div>
+    </div>
+    {% if recent_records %}
+        <div class="data-table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Record</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in recent_records %}
+                        <tr>
+                            <td><a href="{{ record.table.get_absolute_url }}">{{ record.table.name }}</a></td>
+                            <td>{{ record.display_label }}</td>
+                            <td>{{ record.updated_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="muted">No record activity yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

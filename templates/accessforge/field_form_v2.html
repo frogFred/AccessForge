@@ -1,0 +1,30 @@
+{% extends "app_base.html" %}
+
+{% block title %}{{ title }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="panel panel--narrow">
+    <div class="section-heading">
+        <div>
+            <h1>{{ title }}</h1>
+            <p>Fields define validation, data types, relation targets, import mapping, query behavior, and generated forms.</p>
+        </div>
+    </div>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-row">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+            </div>
+        {% endfor %}
+        {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+        <div class="form-actions">
+            <a href="{{ table.get_absolute_url }}" class="button button--ghost">Cancel</a>
+            <button type="submit" class="button">{{ submit_label }}</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

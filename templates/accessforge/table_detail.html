@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ table.name }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="hero hero--compact">
+    <div>
+        <span class="eyebrow">Table workspace</span>
+        <h1>{{ table.name }}</h1>
+        <p>{{ table.description|default:"這個資料表尚未填寫用途說明。" }}</p>
+    </div>
+    <div class="hero__actions">
+        <a href="{% url 'accessforge:record-create' table.slug %}" class="button">新增資料列</a>
+        <a href="{% url 'accessforge:field-create' table.slug %}" class="button button--ghost">新增欄位</a>
+        <a href="{% url 'accessforge:export-csv' table.slug %}" class="button button--ghost">匯出 CSV</a>
+    </div>
+</section>
+
+<section class="panel-grid panel-grid--two">
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>欄位設計</h2>
+                <p>拖曳排序尚未實作，目前可透過欄位順序數字控制排列。</p>
+            </div>
+            <a href="{% url 'accessforge:field-create' table.slug %}" class="button button--small">新增欄位</a>
+        </div>
+        {% if fields %}
+            <div class="schema-list">
+                {% for field in fields %}
+                    <div class="schema-item">
+                        <div>
+                            <strong>{{ field.name }}</strong>
+                            <p>{{ field.get_field_type_display }} / 代號：{{ field.slug }}</p>
+                        </div>
+                        <div class="schema-item__actions">
+                            {% if field.required %}<span class="pill">必填</span>{% endif %}
+                            <a href="{% url 'accessforge:field-update' table.slug field.pk %}">編輯</a>
+                            <a href="{% url 'accessforge:field-delete' table.slug field.pk %}" class="danger-link">刪除</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>尚未建立欄位</h3>
+                <p>先新增欄位，系統才知道每筆資料要收集哪些內容。</p>
+            </div>
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>資料表設定</h2>
+                <p>管理名稱、描述與資料表本身的生命週期。</p>
+            </div>
+        </div>
+        <div class="meta-list">
+            <div><span>Slug</span><strong>{{ table.slug }}</strong></div>
+            <div><span>建立時間</span><strong>{{ table.created_at|date:"Y-m-d H:i" }}</strong></div>
+            <div><span>最後更新</span><strong>{{ table.updated_at|date:"Y-m-d H:i" }}</strong></div>
+        </div>
+        <div class="form-actions form-actions--left">
+            <a href="{% url 'accessforge:table-update' table.slug %}" class="button button--ghost">編輯資料表</a>
+            <a href="{% url 'accessforge:table-delete' table.slug %}" class="button button--danger">刪除資料表</a>
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>資料列</h2>
+            <p>資料列會以欄位定義動態渲染，這是最接近 Access 資料表檢視的區域。</p>
+        </div>
+        <form method="get" class="search-form">
+            <input type="search" name="q" value="{{ search_query }}" placeholder="搜尋這個資料表的內容">
+            <button type="submit" class="button button--small">搜尋</button>
+        </form>
+    </div>
+    {% if fields %}
+        <div class="data-table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for field in fields %}
+                            <th>{{ field.name }}</th>
+                        {% endfor %}
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in record_rows %}
+                        <tr>
+                            {% for cell in row.cells %}
+                                <td>{{ cell }}</td>
+                            {% endfor %}
+                            <td class="actions-cell">
+                                <a href="{% url 'accessforge:record-update' table.slug row.record.pk %}">編輯</a>
+                                <a href="{% url 'accessforge:record-delete' table.slug row.record.pk %}" class="danger-link">刪除</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="{{ fields|length|add:'1' }}" class="muted center">目前查無資料。</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="muted">請先建立欄位後再新增資料。</p>
+    {% endif %}
+</section>
+{% endblock %}

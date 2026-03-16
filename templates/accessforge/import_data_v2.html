@@ -1,0 +1,30 @@
+{% extends "app_base.html" %}
+
+{% block title %}Import Data | {{ table.name }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="panel panel--narrow">
+    <div class="section-heading">
+        <div>
+            <h1>Import into {{ table.name }}</h1>
+            <p>Upload a CSV or XLSX file. Column headers map to field slugs or field names. Relation columns accept record ids or exact display labels.</p>
+        </div>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="stack-form">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-row">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+            </div>
+        {% endfor %}
+        {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+        <div class="form-actions">
+            <a href="{{ table.get_absolute_url }}" class="button button--ghost">Back</a>
+            <button type="submit" class="button">Import data</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

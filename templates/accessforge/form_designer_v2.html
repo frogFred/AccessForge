@@ -1,0 +1,84 @@
+{% extends "app_base.html" %}
+
+{% block title %}Form Designer | {{ table.name }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="panel-grid panel-grid--two">
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h1>Form designer for {{ table.name }}</h1>
+                <p>Change the generated data-entry form to feel more like an Access form: sections, widths, labels, helper text, and field visibility.</p>
+            </div>
+        </div>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            {% for field in layout_form %}
+                <div class="form-row">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+                </div>
+            {% endfor %}
+
+            {{ item_formset.management_form }}
+            <div class="designer-table">
+                <div class="designer-table__header">
+                    <span>Field</span>
+                    <span>Visible</span>
+                    <span>Order</span>
+                    <span>Section</span>
+                    <span>Label</span>
+                    <span>Help</span>
+                    <span>Span</span>
+                </div>
+                {% for item_form in item_formset %}
+                    <div class="designer-table__row">
+                        {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        <span class="designer-label">{{ item_form.instance.field.name }}</span>
+                        <span>{{ item_form.visible }}</span>
+                        <span>{{ item_form.order }}</span>
+                        <span>{{ item_form.section }}</span>
+                        <span>{{ item_form.label_override }}</span>
+                        <span>{{ item_form.help_override }}</span>
+                        <span>{{ item_form.column_span }}</span>
+                    </div>
+                    {% for field in item_form.visible_fields %}
+                        {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+
+            {% for error in layout_form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+            <div class="form-actions">
+                <a href="{{ table.get_absolute_url }}" class="button button--ghost">Back</a>
+                <button type="submit" class="button">Save layout</button>
+            </div>
+        </form>
+    </article>
+
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>Designer notes</h2>
+                <p>Use sections to break large forms into blocks and column span to make important fields wider.</p>
+            </div>
+        </div>
+        <div class="card-stack">
+            <div class="mini-card">
+                <h3>Columns</h3>
+                <p class="muted">The form can render in one, two, or three columns.</p>
+            </div>
+            <div class="mini-card">
+                <h3>Visibility</h3>
+                <p class="muted">Hidden fields stay in storage. On edit, existing values are preserved.</p>
+            </div>
+            <div class="mini-card">
+                <h3>Labels and help</h3>
+                <p class="muted">Overrides affect only the form, not the underlying field definition.</p>
+            </div>
+        </div>
+    </article>
+</section>
+{% endblock %}

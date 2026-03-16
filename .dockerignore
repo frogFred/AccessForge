@@ -1,0 +1,6 @@
+.git
+.gitignore
+__pycache__/
+*.py[cod]
+staticfiles/
+postgres_data/

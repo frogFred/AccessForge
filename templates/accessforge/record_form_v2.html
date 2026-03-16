@@ -1,0 +1,47 @@
+{% extends "app_base.html" %}
+
+{% block title %}{{ title }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="panel panel--narrow">
+    <div class="section-heading">
+        <div>
+            <h1>{{ title }}</h1>
+            <p>This form follows the current designer layout for the table. Relation fields render as record lookups.</p>
+        </div>
+        <div class="mini-actions">
+            <a href="{% url 'accessforge:form-designer' table.slug %}" class="button button--ghost button--small">Edit form layout</a>
+        </div>
+    </div>
+
+    {% if layout.description %}
+        <p class="muted">{{ layout.description }}</p>
+    {% endif %}
+
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {% for section in layout_sections %}
+            <section class="designer-section">
+                {% if section.title %}
+                    <h2 class="designer-section__title">{{ section.title }}</h2>
+                {% endif %}
+                <div class="form-grid" style="grid-template-columns: repeat({{ layout.columns }}, minmax(0, 1fr));">
+                    {% for entry in section.fields %}
+                        <div class="form-row" style="grid-column: span {{ entry.span }};">
+                            {{ entry.bound_field.label_tag }}
+                            {{ entry.bound_field }}
+                            {% if entry.bound_field.help_text %}<small>{{ entry.bound_field.help_text }}</small>{% endif %}
+                            {% for error in entry.bound_field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+        {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+        <div class="form-actions">
+            <a href="{{ table.get_absolute_url }}" class="button button--ghost">Cancel</a>
+            <button type="submit" class="button">{{ submit_label }}</button>
+        </div>
+    </form>
+</section>
+{% endblock %}
