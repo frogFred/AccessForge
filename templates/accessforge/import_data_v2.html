@@ -1,13 +1,13 @@
 {% extends "app_base.html" %}
 
-{% block title %}Import Data | {{ table.name }} | AccessForge{% endblock %}
+{% block title %}匯入資料 | {{ table.name }} | AccessForge{% endblock %}
 
 {% block content %}
 <section class="panel panel--narrow">
     <div class="section-heading">
         <div>
-            <h1>Import into {{ table.name }}</h1>
-            <p>Upload a CSV or XLSX file. Column headers map to field slugs or field names. Relation columns accept record ids or exact display labels.</p>
+            <h1>匯入到 {{ table.name }}</h1>
+            <p>上傳 CSV 或 XLSX 檔。第一列欄位標題會對應欄位代稱或欄位名稱；關聯欄位可輸入記錄 ID 或完整顯示名稱。</p>
         </div>
     </div>
     <form method="post" enctype="multipart/form-data" class="stack-form">
@@ -22,8 +22,8 @@
         {% endfor %}
         {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
         <div class="form-actions">
-            <a href="{{ table.get_absolute_url }}" class="button button--ghost">Back</a>
-            <button type="submit" class="button">Import data</button>
+            <a href="{{ table.get_absolute_url }}" class="button button--ghost" title="返回資料表，不進行匯入。">返回資料表</a>
+            <button type="submit" class="button" title="開始解析檔案並把資料匯入這張表。">開始匯入</button>
         </div>
     </form>
 </section>

@@ -1,0 +1,142 @@
+{% extends "app_base.html" %}
+
+{% block title %}查詢建構器 | {{ table.name }} | AccessForge{% endblock %}
+
+{% block content %}
+<section class="panel-grid panel-grid--two">
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h1>{{ table.name }} 的查詢建構器</h1>
+                <p>用多組條件、關聯欄位與已儲存查詢，建立接近 Access 的資料篩選流程。</p>
+            </div>
+        </div>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            {% if saved_query %}
+                <input type="hidden" name="query_id" value="{{ saved_query.pk }}">
+            {% endif %}
+            {% for field in query_form %}
+                <div class="form-row">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+                </div>
+            {% endfor %}
+
+            <div class="query-rules">
+                {{ condition_formset.management_form }}
+                {% for condition_form in condition_formset %}
+                    <div class="rule-row">
+                        {% for hidden in condition_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        <div class="rule-grid">
+                            {% for field in condition_form.visible_fields %}
+                                {% if field.name != "DELETE" %}
+                                    <div class="form-row">
+                                        {{ field.label_tag }}
+                                        {{ field }}
+                                        {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                            {% if condition_form.DELETE %}
+                                <div class="form-row form-row--checkbox">
+                                    {{ condition_form.DELETE.label_tag }}
+                                    {{ condition_form.DELETE }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% for error in condition_formset.non_form_errors %}<p class="error">{{ error }}</p>{% endfor %}
+            <div class="form-actions">
+                <a href="{{ table.get_absolute_url }}" class="button button--ghost" title="返回資料表頁面。">返回資料表</a>
+                <button type="submit" class="button" title="依目前條件執行查詢。">執行查詢</button>
+            </div>
+        </form>
+    </article>
+
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>已儲存查詢</h2>
+                <p>點選任一查詢即可重新執行，或進一步修改它的條件。</p>
+            </div>
+        </div>
+        <div class="member-list">
+            {% for query in saved_queries %}
+                <div class="member-row">
+                    <div>
+                        <strong><a href="{% url 'accessforge:query-builder' table.slug %}?saved={{ query.pk }}">{{ query.name }}</a></strong>
+                        <p>{{ query.description|default:query.get_match_mode_display }}</p>
+                    </div>
+                    <div class="member-row__actions">
+                        <span class="pill">{{ query.get_match_mode_display }}</span>
+                        <a href="{% url 'accessforge:query-delete' table.slug query.pk %}" class="danger-link" title="刪除這個已儲存查詢。">刪除</a>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="muted">目前還沒有已儲存查詢。</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>可用關聯欄位</h2>
+            <p>關聯欄位可展開一層 joined column，供查詢與報表直接使用。</p>
+        </div>
+        <a href="{% url 'accessforge:table-report' table.slug %}" class="button button--ghost button--small" title="前往報表建構器。">開啟報表建構器</a>
+    </div>
+    {% if join_paths %}
+        <div class="join-grid">
+            {% for join_path in join_paths %}
+                <div class="mini-card">
+                    <strong>{{ join_path.label }}</strong>
+                    <p>欄位代號：<code>{{ join_path.token }}</code></p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">目前還沒有可用的 joined path，請先建立關聯欄位。</p>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>查詢結果</h2>
+            <p>執行查詢後，結果會顯示在這裡。</p>
+        </div>
+    </div>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    {% for field in fields %}
+                        <th>{{ field.label }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in record_rows %}
+                    <tr>
+                        {% for cell in row.cells %}
+                            <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="{{ fields|length|default:1 }}" class="muted center">請先執行查詢，這裡才會顯示結果。</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

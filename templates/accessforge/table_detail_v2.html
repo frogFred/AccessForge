@@ -15,6 +15,7 @@
             <a href="{% url 'accessforge:import-data' table.slug %}" class="button button--ghost">Import CSV/XLSX</a>
         {% endif %}
         <a href="{% url 'accessforge:query-builder' table.slug %}" class="button button--ghost">Query builder</a>
+        <a href="{% url 'accessforge:table-report' table.slug %}" class="button button--ghost">Report and print</a>
         <a href="{% url 'accessforge:export-csv' table.slug %}" class="button button--ghost">Export CSV</a>
     </div>
 </section>

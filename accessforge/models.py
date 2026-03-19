@@ -13,6 +13,11 @@ from django.utils.text import slugify
 ROLE_VIEWER = "viewer"
 ROLE_EDITOR = "editor"
 ROLE_OWNER = "owner"
+ROLE_CHOICES = [
+    (ROLE_VIEWER, "檢視者"),
+    (ROLE_EDITOR, "編輯者"),
+    (ROLE_OWNER, "擁有者"),
+]
 ROLE_RANK = {
     ROLE_VIEWER: 1,
     ROLE_EDITOR: 2,
@@ -108,12 +113,6 @@ class DataTable(TimeStampedModel):
 
 
 class TableMembership(TimeStampedModel):
-    ROLE_CHOICES = [
-        (ROLE_VIEWER, "Viewer"),
-        (ROLE_EDITOR, "Editor"),
-        (ROLE_OWNER, "Owner"),
-    ]
-
     table = models.ForeignKey(
         DataTable,
         related_name="memberships",
@@ -152,16 +151,16 @@ class DataField(TimeStampedModel):
     RELATION = "relation"
 
     FIELD_TYPES = [
-        (TEXT, "Text"),
-        (LONG_TEXT, "Long text"),
-        (INTEGER, "Integer"),
-        (DECIMAL, "Decimal"),
-        (BOOLEAN, "Boolean"),
-        (DATE, "Date"),
-        (DATETIME, "Date and time"),
-        (EMAIL, "Email"),
-        (URL, "URL"),
-        (RELATION, "Related record"),
+        (TEXT, "文字"),
+        (LONG_TEXT, "長文字"),
+        (INTEGER, "整數"),
+        (DECIMAL, "小數"),
+        (BOOLEAN, "布林"),
+        (DATE, "日期"),
+        (DATETIME, "日期時間"),
+        (EMAIL, "電子郵件"),
+        (URL, "網址"),
+        (RELATION, "關聯記錄"),
     ]
 
     TEXT_LIKE_TYPES = {TEXT, LONG_TEXT, EMAIL, URL}
@@ -181,6 +180,8 @@ class DataField(TimeStampedModel):
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=140, blank=True)
     field_type = models.CharField(max_length=20, choices=FIELD_TYPES, default=TEXT)
+    view_role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_VIEWER)
+    edit_role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_EDITOR)
     required = models.BooleanField(default=False)
     default_value = models.CharField(max_length=255, blank=True)
     help_text = models.CharField(max_length=255, blank=True)
@@ -204,9 +205,19 @@ class DataField(TimeStampedModel):
 
     def clean(self):
         if self.field_type == self.RELATION and not self.related_table:
-            raise ValidationError({"related_table": "Choose a related table."})
+            raise ValidationError({"related_table": "請選擇這個關聯欄位要指向的資料表。"})
         if self.field_type != self.RELATION:
             self.related_table = None
+        if ROLE_RANK[self.edit_role] < ROLE_RANK[self.view_role]:
+            raise ValidationError(
+                {"edit_role": "編輯權限不能低於檢視權限。"}
+            )
+
+    def can_view(self, user) -> bool:
+        return self.table.has_role(user, self.view_role)
+
+    def can_edit(self, user) -> bool:
+        return self.can_view(user) and self.table.has_role(user, self.edit_role)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -276,7 +287,7 @@ class DataField(TimeStampedModel):
         if value in (None, ""):
             return "-"
         if self.field_type == self.BOOLEAN:
-            return "Yes" if value else "No"
+            return "是" if value else "否"
         if self.field_type == self.DATE:
             parsed = parse_date(value) if isinstance(value, str) else value
             return parsed.strftime("%Y-%m-%d") if parsed else str(value)
@@ -286,7 +297,7 @@ class DataField(TimeStampedModel):
         if self.field_type == self.RELATION:
             related_id = int(value)
             record = self.related_table.records.filter(pk=related_id).first() if self.related_table else None
-            return record.display_label if record else f"Missing record #{related_id}"
+            return record.display_label if record else f"找不到記錄 #{related_id}"
         return str(value)
 
 
@@ -317,8 +328,8 @@ class SavedQuery(TimeStampedModel):
     MATCH_ALL = "all"
     MATCH_ANY = "any"
     MATCH_CHOICES = [
-        (MATCH_ALL, "Match all rules"),
-        (MATCH_ANY, "Match any rule"),
+        (MATCH_ALL, "符合全部條件"),
+        (MATCH_ANY, "符合任一條件"),
     ]
 
     table = models.ForeignKey(
@@ -358,10 +369,10 @@ class FormLayout(TimeStampedModel):
         related_name="form_layout",
         on_delete=models.CASCADE,
     )
-    title = models.CharField(max_length=120, default="Data entry form")
+    title = models.CharField(max_length=120, default="資料輸入表單")
     description = models.TextField(blank=True)
     columns = models.PositiveSmallIntegerField(default=2)
-    submit_label = models.CharField(max_length=80, default="Save record")
+    submit_label = models.CharField(max_length=80, default="儲存資料")
 
     class Meta:
         ordering = ("table__name",)

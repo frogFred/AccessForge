@@ -7,7 +7,7 @@
     <div class="section-heading">
         <div>
             <h1>{{ title }}</h1>
-            <p>Define the table shell first. Fields, roles, queries, imports, and custom forms are managed after the table exists.</p>
+            <p>先建立資料表本體，之後再設定欄位、角色、查詢、匯入規則與自訂表單。</p>
         </div>
     </div>
     <form method="post" class="stack-form">
@@ -22,8 +22,8 @@
         {% endfor %}
         {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
         <div class="form-actions">
-            <a href="{% if table %}{{ table.get_absolute_url }}{% else %}{% url 'accessforge:dashboard' %}{% endif %}" class="button button--ghost">Cancel</a>
-            <button type="submit" class="button">{{ submit_label }}</button>
+            <a href="{% if table %}{{ table.get_absolute_url }}{% else %}{% url 'accessforge:dashboard' %}{% endif %}" class="button button--ghost" title="放棄這次修改並返回上一頁。">取消</a>
+            <button type="submit" class="button" title="儲存目前的資料表設定。">{{ submit_label }}</button>
         </div>
     </form>
 </section>

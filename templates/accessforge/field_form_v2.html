@@ -7,7 +7,7 @@
     <div class="section-heading">
         <div>
             <h1>{{ title }}</h1>
-            <p>Fields define validation, data types, relation targets, import mapping, query behavior, and generated forms.</p>
+            <p>欄位會決定資料驗證、型別、關聯目標、欄位級權限、匯入對應、查詢行為與自動產生的表單。</p>
         </div>
     </div>
     <form method="post" class="stack-form">
@@ -22,8 +22,8 @@
         {% endfor %}
         {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
         <div class="form-actions">
-            <a href="{{ table.get_absolute_url }}" class="button button--ghost">Cancel</a>
-            <button type="submit" class="button">{{ submit_label }}</button>
+            <a href="{{ table.get_absolute_url }}" class="button button--ghost" title="取消這次欄位修改並返回資料表。">取消</a>
+            <button type="submit" class="button" title="儲存這個欄位設定。">{{ submit_label }}</button>
         </div>
     </form>
 </section>

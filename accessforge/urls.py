@@ -27,6 +27,7 @@ urlpatterns = [
     path("tables/<slug:slug>/edit/", views.table_update, name="table-update"),
     path("tables/<slug:slug>/delete/", views.table_delete, name="table-delete"),
     path("tables/<slug:slug>/export/", views.export_csv, name="export-csv"),
+    path("tables/<slug:slug>/report/", views.table_report, name="table-report"),
     path("tables/<slug:slug>/members/", views.table_members, name="table-members"),
     path("tables/<slug:slug>/members/<int:pk>/delete/", views.member_delete, name="member-delete"),
     path("tables/<slug:slug>/queries/", views.query_builder, name="query-builder"),

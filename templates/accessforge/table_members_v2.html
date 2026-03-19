@@ -1,14 +1,14 @@
 {% extends "app_base.html" %}
 
-{% block title %}Roles | {{ table.name }} | AccessForge{% endblock %}
+{% block title %}角色與成員 | {{ table.name }} | AccessForge{% endblock %}
 
 {% block content %}
 <section class="panel-grid panel-grid--two">
     <article class="panel">
         <div class="section-heading">
             <div>
-                <h1>Roles for {{ table.name }}</h1>
-                <p>Assign viewer or editor access. The table owner always keeps owner access.</p>
+                <h1>{{ table.name }} 的角色與成員</h1>
+                <p>可指派檢視者或編輯者權限。資料表擁有者會固定保有擁有者權限。</p>
             </div>
         </div>
         <div class="member-list">
@@ -16,17 +16,17 @@
                 <div class="member-row">
                     <div>
                         <strong>{{ membership.user.username }}</strong>
-                        <p>{{ membership.user.email|default:"No email" }}</p>
+                        <p>{{ membership.user.email|default:"未提供電子郵件" }}</p>
                     </div>
                     <div class="member-row__actions">
-                        <span class="pill">{{ membership.role }}</span>
+                        <span class="pill">{{ membership.get_role_display }}</span>
                         {% if membership.user_id != table.owner_id %}
-                            <a href="{% url 'accessforge:member-delete' table.slug membership.pk %}" class="danger-link">Remove</a>
+                            <a href="{% url 'accessforge:member-delete' table.slug membership.pk %}" class="danger-link" title="移除這位成員對本資料表的存取權限。">移除</a>
                         {% endif %}
                     </div>
                 </div>
             {% empty %}
-                <p class="muted">No extra members yet.</p>
+                <p class="muted">目前還沒有其他成員。</p>
             {% endfor %}
         </div>
     </article>
@@ -34,8 +34,8 @@
     <article class="panel">
         <div class="section-heading">
             <div>
-                <h2>Add or update member</h2>
-                <p>If the username exists, the role is updated. Otherwise a new login is created.</p>
+                <h2>新增或更新成員</h2>
+                <p>如果帳號已存在，系統會直接更新角色；如果不存在，就建立新的登入帳號。</p>
             </div>
         </div>
         <form method="post" class="stack-form">
@@ -50,8 +50,8 @@
             {% endfor %}
             {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
             <div class="form-actions">
-                <a href="{{ table.get_absolute_url }}" class="button button--ghost">Back</a>
-                <button type="submit" class="button">Save member</button>
+                <a href="{{ table.get_absolute_url }}" class="button button--ghost" title="返回資料表頁面。">返回資料表</a>
+                <button type="submit" class="button" title="儲存成員與角色設定。">儲存成員</button>
             </div>
         </form>
     </article>

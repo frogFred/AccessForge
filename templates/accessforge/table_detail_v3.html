@@ -1,0 +1,200 @@
+{% extends "app_base.html" %}
+
+{% block title %}{{ table.name }} | 資料表工作台 | AccessForge{% endblock %}
+
+{% block content %}
+<section class="hero hero--compact">
+    <div>
+        <span class="eyebrow">資料表工作台</span>
+        <h1>{{ table.name }}</h1>
+        <p>{{ table.description|default:"尚未填寫說明。" }}</p>
+    </div>
+    <div class="hero__actions">
+        {% if can_edit %}
+            <a href="{% url 'accessforge:record-create' table.slug %}" class="button" title="新增一筆資料到這張表。">新增資料</a>
+            <a href="{% url 'accessforge:import-data' table.slug %}" class="button button--ghost" title="從 CSV 或 XLSX 批次匯入資料。">匯入 CSV/XLSX</a>
+        {% endif %}
+        <a href="{% url 'accessforge:query-builder' table.slug %}" class="button button--ghost" title="建立條件式查詢，並可儲存為可重複使用的規則。">查詢建構器</a>
+        <a href="{% url 'accessforge:table-report' table.slug %}" class="button button--ghost" title="建立可列印的報表視圖。">報表與列印</a>
+        <a href="{% url 'accessforge:export-csv' table.slug %}" class="button button--ghost" title="匯出目前可見欄位為 CSV。">匯出 CSV</a>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="tab-list">
+        {% if can_manage %}<a href="{% url 'accessforge:field-create' table.slug %}" title="新增資料欄位並設定型別、權限與預設值。">新增欄位</a>{% endif %}
+        {% if can_manage %}<a href="{% url 'accessforge:table-update' table.slug %}" title="修改資料表名稱、網址代稱與顯示欄位。">資料表設定</a>{% endif %}
+        {% if can_manage %}<a href="{% url 'accessforge:table-members' table.slug %}" title="管理這張資料表的成員與角色。">角色管理</a>{% endif %}
+        {% if can_manage %}<a href="{% url 'accessforge:form-designer' table.slug %}" title="調整輸入表單的區段、欄寬與顯示方式。">表單設計器</a>{% endif %}
+    </div>
+</section>
+
+<section class="panel-grid panel-grid--two">
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>欄位結構</h2>
+                <p>欄位會決定資料驗證、列表呈現、查詢、匯入、表單顯示與欄位級權限。</p>
+            </div>
+            {% if can_manage %}
+                <a href="{% url 'accessforge:field-create' table.slug %}" class="button button--small" title="新增新的資料欄位。">新增欄位</a>
+            {% endif %}
+        </div>
+        {% if schema_fields %}
+            <div class="schema-list">
+                {% for field in schema_fields %}
+                    <div class="schema-item">
+                        <div>
+                            <strong>{{ field.name }}</strong>
+                            <p>{{ field.get_field_type_display }} | 代稱：{{ field.slug }}</p>
+                            {% if field.related_table %}
+                                <p>關聯到 {{ field.related_table.name }}</p>
+                            {% endif %}
+                            <div class="schema-meta">
+                                <span class="pill">檢視：{{ field.get_view_role_display }}</span>
+                                <span class="pill pill--neutral">編輯：{{ field.get_edit_role_display }}</span>
+                            </div>
+                        </div>
+                        <div class="schema-item__actions">
+                            {% if field.required %}<span class="pill">必填</span>{% endif %}
+                            {% if can_manage %}
+                                <a href="{% url 'accessforge:field-update' table.slug field.pk %}" title="編輯這個欄位設定。">編輯</a>
+                                <a href="{% url 'accessforge:field-delete' table.slug field.pk %}" class="danger-link" title="刪除這個欄位與既有資料中的對應值。">刪除</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>尚未定義任何欄位</h3>
+                <p>先建立欄位後，這張資料表才能開始儲存資料。</p>
+            </div>
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>關聯與權限</h2>
+                <p>查看這張資料表連出去的關聯、被哪些資料表引用，以及目前有哪些成員可操作。</p>
+            </div>
+        </div>
+        <div class="card-stack">
+            <div class="mini-card">
+                <h3>對外關聯</h3>
+                {% if outgoing_relations %}
+                    <ul class="plain-list">
+                        {% for field in outgoing_relations %}
+                            <li>{{ field.name }} -> {{ field.related_table.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="muted">目前還沒有關聯欄位。</p>
+                {% endif %}
+            </div>
+            <div class="mini-card">
+                <h3>被引用關聯</h3>
+                {% if incoming_relations %}
+                    <ul class="plain-list">
+                        {% for field in incoming_relations %}
+                            <li>{{ field.table.name }}.{{ field.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="muted">目前還沒有其他資料表指向這裡。</p>
+                {% endif %}
+            </div>
+            <div class="mini-card">
+                <h3>成員</h3>
+                <ul class="plain-list">
+                    {% for membership in memberships %}
+                        <li>{{ membership.user.username }} | {{ membership.get_role_display }}</li>
+                    {% empty %}
+                        <li>{{ table.owner.username }} | 擁有者</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% if can_manage %}
+            <div class="form-actions form-actions--left">
+                <a href="{% url 'accessforge:table-members' table.slug %}" class="button button--ghost" title="管理成員與角色。">管理角色</a>
+                <a href="{% url 'accessforge:form-designer' table.slug %}" class="button button--ghost" title="設計這張資料表的輸入表單。">設計表單</a>
+            </div>
+        {% endif %}
+    </article>
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>已儲存查詢</h2>
+            <p>把常用條件存下來，之後就能快速重跑，不必每次重新設定。</p>
+        </div>
+        <div class="hero__actions">
+            <a href="{% url 'accessforge:query-builder' table.slug %}" class="button button--small" title="前往查詢建構器。">開啟查詢建構器</a>
+            <a href="{% url 'accessforge:table-report' table.slug %}" class="button button--ghost button--small" title="用目前資料建立報表。">建立報表</a>
+        </div>
+    </div>
+    {% if saved_queries %}
+        <ul class="plain-list plain-list--cards">
+            {% for query in saved_queries %}
+                <li>
+                    <strong>{{ query.name }}</strong>
+                    <span>{{ query.get_match_mode_display }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted">目前還沒有已儲存查詢。</p>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <div class="section-heading">
+        <div>
+            <h2>資料列表</h2>
+            <p>快速搜尋會掃描這張表目前可見欄位中的顯示值。</p>
+        </div>
+        <form method="get" class="search-form">
+            <input type="search" name="q" value="{{ search_query }}" placeholder="搜尋資料" title="輸入關鍵字搜尋目前可見欄位。">
+            <button type="submit" class="button button--small" title="用關鍵字篩選這張表的資料。">搜尋</button>
+        </form>
+    </div>
+    {% if fields %}
+        <div class="data-table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for field in fields %}
+                            <th>{{ field.label }}</th>
+                        {% endfor %}
+                        {% if can_edit %}<th>操作</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in record_rows %}
+                        <tr>
+                            {% for cell in row.cells %}
+                                <td>{{ cell }}</td>
+                            {% endfor %}
+                            {% if can_edit %}
+                                <td class="actions-cell">
+                                    <a href="{% url 'accessforge:record-update' table.slug row.record.pk %}" title="編輯這筆資料。">編輯</a>
+                                    <a href="{% url 'accessforge:record-delete' table.slug row.record.pk %}" class="danger-link" title="刪除這筆資料。">刪除</a>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="{% if can_edit %}{{ fields|length|add:'1' }}{% else %}{{ fields|length }}{% endif %}" class="muted center">沒有符合條件的資料。</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="muted">請先建立欄位，再開始新增資料。</p>
+    {% endif %}
+</section>
+{% endblock %}

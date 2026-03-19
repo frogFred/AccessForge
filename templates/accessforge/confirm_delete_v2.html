@@ -13,8 +13,8 @@
     <form method="post" class="stack-form">
         {% csrf_token %}
         <div class="form-actions">
-            <a href="{{ cancel_url }}" class="button button--ghost">Cancel</a>
-            <button type="submit" class="button button--danger">Confirm delete</button>
+            <a href="{{ cancel_url }}" class="button button--ghost" title="取消刪除並返回上一頁。">取消</a>
+            <button type="submit" class="button button--danger" title="確認永久刪除這個項目。">確認刪除</button>
         </div>
     </form>
 </section>

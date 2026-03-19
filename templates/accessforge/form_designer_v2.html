@@ -1,14 +1,14 @@
 {% extends "app_base.html" %}
 
-{% block title %}Form Designer | {{ table.name }} | AccessForge{% endblock %}
+{% block title %}表單設計器 | {{ table.name }} | AccessForge{% endblock %}
 
 {% block content %}
 <section class="panel-grid panel-grid--two">
     <article class="panel">
         <div class="section-heading">
             <div>
-                <h1>Form designer for {{ table.name }}</h1>
-                <p>Change the generated data-entry form to feel more like an Access form: sections, widths, labels, helper text, and field visibility.</p>
+                <h1>{{ table.name }} 的表單設計器</h1>
+                <p>把自動產生的輸入表單調整得更接近 Access：可設定區段、寬度、標籤、提示文字與欄位顯示狀態。</p>
             </div>
         </div>
         <form method="post" class="stack-form">
@@ -25,13 +25,13 @@
             {{ item_formset.management_form }}
             <div class="designer-table">
                 <div class="designer-table__header">
-                    <span>Field</span>
-                    <span>Visible</span>
-                    <span>Order</span>
-                    <span>Section</span>
-                    <span>Label</span>
-                    <span>Help</span>
-                    <span>Span</span>
+                    <span>欄位</span>
+                    <span>顯示</span>
+                    <span>排序</span>
+                    <span>區段</span>
+                    <span>標籤</span>
+                    <span>提示</span>
+                    <span>跨欄</span>
                 </div>
                 {% for item_form in item_formset %}
                     <div class="designer-table__row">
@@ -52,8 +52,8 @@
 
             {% for error in layout_form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
             <div class="form-actions">
-                <a href="{{ table.get_absolute_url }}" class="button button--ghost">Back</a>
-                <button type="submit" class="button">Save layout</button>
+                <a href="{{ table.get_absolute_url }}" class="button button--ghost" title="返回資料表頁面。">返回資料表</a>
+                <button type="submit" class="button" title="儲存這份表單版型設定。">儲存版型</button>
             </div>
         </form>
     </article>
@@ -61,22 +61,22 @@
     <article class="panel">
         <div class="section-heading">
             <div>
-                <h2>Designer notes</h2>
-                <p>Use sections to break large forms into blocks and column span to make important fields wider.</p>
+                <h2>設計提示</h2>
+                <p>可用區段把大型表單拆成幾個區塊，再用跨欄寬度讓重要欄位更醒目。</p>
             </div>
         </div>
         <div class="card-stack">
             <div class="mini-card">
-                <h3>Columns</h3>
-                <p class="muted">The form can render in one, two, or three columns.</p>
+                <h3>欄數</h3>
+                <p class="muted">表單可以用一欄、兩欄或三欄的方式排列。</p>
             </div>
             <div class="mini-card">
-                <h3>Visibility</h3>
-                <p class="muted">Hidden fields stay in storage. On edit, existing values are preserved.</p>
+                <h3>顯示狀態</h3>
+                <p class="muted">隱藏欄位不會被刪除；編輯既有資料時，原本的值仍會保留。</p>
             </div>
             <div class="mini-card">
-                <h3>Labels and help</h3>
-                <p class="muted">Overrides affect only the form, not the underlying field definition.</p>
+                <h3>標籤與提示</h3>
+                <p class="muted">覆寫只影響表單畫面，不會更動底層欄位定義。</p>
             </div>
         </div>
     </article>

@@ -31,8 +31,17 @@ class DataTableAdmin(admin.ModelAdmin):
 
 @admin.register(DataField)
 class DataFieldAdmin(admin.ModelAdmin):
-    list_display = ("name", "table", "field_type", "related_table", "required", "order")
-    list_filter = ("field_type", "required", "table", "related_table")
+    list_display = (
+        "name",
+        "table",
+        "field_type",
+        "related_table",
+        "view_role",
+        "edit_role",
+        "required",
+        "order",
+    )
+    list_filter = ("field_type", "view_role", "edit_role", "required", "table", "related_table")
     search_fields = ("name", "slug", "table__name", "related_table__name")
 
 

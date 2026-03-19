@@ -7,10 +7,12 @@
     <div class="section-heading">
         <div>
             <h1>{{ title }}</h1>
-            <p>This form follows the current designer layout for the table. Relation fields render as record lookups.</p>
+            <p>這份表單會依照目前的表單設計版型呈現。關聯欄位會顯示為記錄查找，沒有編輯權限的欄位會以唯讀方式顯示。</p>
         </div>
         <div class="mini-actions">
-            <a href="{% url 'accessforge:form-designer' table.slug %}" class="button button--ghost button--small">Edit form layout</a>
+            {% if can_manage %}
+                <a href="{% url 'accessforge:form-designer' table.slug %}" class="button button--ghost button--small" title="調整目前資料表的表單版型。">編輯表單版型</a>
+            {% endif %}
         </div>
     </div>
 
@@ -39,8 +41,8 @@
         {% endfor %}
         {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
         <div class="form-actions">
-            <a href="{{ table.get_absolute_url }}" class="button button--ghost">Cancel</a>
-            <button type="submit" class="button">{{ submit_label }}</button>
+            <a href="{{ table.get_absolute_url }}" class="button button--ghost" title="取消編輯並返回資料表。">取消</a>
+            <button type="submit" class="button" title="儲存目前這筆資料。">{{ submit_label }}</button>
         </div>
     </form>
 </section>

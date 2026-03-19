@@ -1,0 +1,121 @@
+{% extends "app_base.html" %}
+
+{% block title %}{{ report_title }} | {{ table.name }} | 報表 | AccessForge{% endblock %}
+
+{% block content %}
+<section class="hero hero--compact no-print">
+    <div>
+        <span class="eyebrow">報表建構器</span>
+        <h1>{{ report_title }}</h1>
+        <p>從可見欄位、已儲存查詢與一層關聯欄位，快速建立可列印的報表。</p>
+    </div>
+    <div class="hero__actions">
+        <a href="{{ table.get_absolute_url }}" class="button button--ghost" title="返回資料表頁面。">返回資料表</a>
+        <a href="{% url 'accessforge:query-builder' table.slug %}" class="button button--ghost" title="改用查詢建構器調整條件。">查詢建構器</a>
+        <button type="button" class="button" onclick="window.print()" title="開啟瀏覽器列印流程。">列印</button>
+    </div>
+</section>
+
+<div class="report-layout">
+    {% if not print_mode %}
+        <aside class="panel report-sidebar no-print">
+            <div class="section-heading">
+                <div>
+                    <h2>報表設定</h2>
+                    <p>選擇要顯示的欄位、套用已儲存查詢，並可依欄位分組輸出。</p>
+                </div>
+            </div>
+            <form method="get" class="stack-form">
+                {% for field in form %}
+                    <div class="form-row">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                        {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+                    </div>
+                {% endfor %}
+                {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+                <div class="form-actions form-actions--left">
+                    <button type="submit" class="button" title="依目前設定重新整理報表內容。">更新報表</button>
+                    <button type="submit" name="print" value="1" class="button button--ghost" title="切換為適合列印的版面。">開啟列印版</button>
+                </div>
+            </form>
+        </aside>
+    {% endif %}
+
+    <section class="panel report-preview{% if print_mode %} report-preview--print{% endif %}">
+        <div class="report-sheet">
+            <header class="report-header">
+                <div>
+                    <span class="eyebrow">可列印報表</span>
+                    <h1>{{ report_title }}</h1>
+                    <p>
+                        來源資料表：{{ table.name }}
+                        {% if selected_query %}
+                            | 套用查詢：{{ selected_query.name }}
+                        {% endif %}
+                        {% if group_spec %}
+                            | 分組欄位：{{ group_spec.label }}
+                        {% endif %}
+                    </p>
+                </div>
+                {% if show_summary %}
+                    <div class="stat-strip">
+                        <div class="stat-tile">
+                            <span>總筆數</span>
+                            <strong>{{ total_records }}</strong>
+                        </div>
+                        <div class="stat-tile">
+                            <span>欄位數</span>
+                            <strong>{{ report_columns|length }}</strong>
+                        </div>
+                        <div class="stat-tile">
+                            <span>分組數</span>
+                            <strong>{{ groups|length }}</strong>
+                        </div>
+                    </div>
+                {% endif %}
+            </header>
+
+            {% for group in groups %}
+                <section class="report-group">
+                    {% if group_spec %}
+                        <div class="section-heading">
+                            <div>
+                                <h2>{{ group.label|default:"（空白）" }}</h2>
+                                <p>{{ group.count }} 筆資料</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="data-table-wrapper">
+                        <table class="data-table report-table">
+                            <thead>
+                                <tr>
+                                    {% if show_row_numbers %}<th>#</th>{% endif %}
+                                    {% for field in report_columns %}
+                                        <th>{{ field.label }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in group.rows %}
+                                    <tr>
+                                        {% if show_row_numbers %}<td>{{ forloop.counter }}</td>{% endif %}
+                                        {% for cell in row.cells %}
+                                            <td>{{ cell }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="{% if show_row_numbers %}{{ report_columns|length|add:'1' }}{% else %}{{ report_columns|length }}{% endif %}" class="muted center">目前設定下沒有符合條件的資料。</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

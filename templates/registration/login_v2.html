@@ -1,14 +1,14 @@
 {% extends "app_base.html" %}
 
-{% block title %}Log In | AccessForge{% endblock %}
+{% block title %}登入 | AccessForge{% endblock %}
 
 {% block content %}
 <section class="panel panel--narrow auth-card">
     <div class="section-heading">
         <div>
-            <span class="eyebrow">Authentication</span>
-            <h1>Log in to AccessForge</h1>
-            <p>Use the account you created in the app or through Django admin.</p>
+            <span class="eyebrow">帳號登入</span>
+            <h1>登入 AccessForge</h1>
+            <p>請使用你在系統中建立的帳號，或由 Django 後台建立的登入資訊。</p>
         </div>
     </div>
     <form method="post" class="stack-form">
@@ -17,12 +17,13 @@
             <div class="form-row">
                 {{ field.label_tag }}
                 {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
                 {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
             </div>
         {% endfor %}
         {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
         <div class="form-actions">
-            <button type="submit" class="button">Log in</button>
+            <button type="submit" class="button" title="送出帳號與密碼進行登入。">登入</button>
         </div>
     </form>
 </section>

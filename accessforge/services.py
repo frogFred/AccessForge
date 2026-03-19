@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+from dataclasses import dataclass
 from datetime import date, datetime, time
 from decimal import Decimal
 
@@ -14,24 +15,114 @@ from .models import DataField, DataRecord, DataTable
 
 
 QUERY_OPERATOR_CHOICES = [
-    ("equals", "Equals"),
-    ("not_equals", "Does not equal"),
-    ("contains", "Contains"),
-    ("starts_with", "Starts with"),
-    ("ends_with", "Ends with"),
-    ("gt", "Greater than"),
-    ("gte", "Greater than or equal"),
-    ("lt", "Less than"),
-    ("lte", "Less than or equal"),
-    ("is_empty", "Is empty"),
-    ("not_empty", "Is not empty"),
-    ("is_true", "Is true"),
-    ("is_false", "Is false"),
+    ("equals", "等於"),
+    ("not_equals", "不等於"),
+    ("contains", "包含"),
+    ("starts_with", "開頭是"),
+    ("ends_with", "結尾是"),
+    ("gt", "大於"),
+    ("gte", "大於或等於"),
+    ("lt", "小於"),
+    ("lte", "小於或等於"),
+    ("is_empty", "為空"),
+    ("not_empty", "不為空"),
+    ("is_true", "為是"),
+    ("is_false", "為否"),
 ]
 
 
+@dataclass(frozen=True)
+class FieldPathSpec:
+    token: str
+    label: str
+    field: DataField
+    relation_field: DataField | None = None
+
+    @property
+    def is_joined(self) -> bool:
+        return self.relation_field is not None
+
+
+def get_visible_fields(table: DataTable, user) -> list[DataField]:
+    if user is None:
+        return list(table.ordered_fields)
+    return [field for field in table.ordered_fields if field.can_view(user)]
+
+
+def get_accessible_field_paths(
+    table: DataTable,
+    user,
+    *,
+    include_joined: bool = True,
+) -> list[FieldPathSpec]:
+    paths: list[FieldPathSpec] = []
+    for field in get_visible_fields(table, user):
+        paths.append(FieldPathSpec(token=field.slug, label=field.name, field=field))
+        if not include_joined:
+            continue
+        if not field.is_relation or field.related_table is None:
+            continue
+        if user is not None and not field.related_table.has_role(user):
+            continue
+        for related_field in get_visible_fields(field.related_table, user):
+            paths.append(
+                FieldPathSpec(
+                    token=f"{field.slug}__{related_field.slug}",
+                    label=f"{field.name} -> {related_field.name}",
+                    field=related_field,
+                    relation_field=field,
+                )
+            )
+    return paths
+
+
+def resolve_field_path(
+    table: DataTable,
+    user,
+    token: str,
+    *,
+    include_joined: bool = True,
+) -> FieldPathSpec:
+    available = {
+        spec.token: spec
+        for spec in get_accessible_field_paths(table, user, include_joined=include_joined)
+    }
+    try:
+        return available[token]
+    except KeyError as exc:
+        raise ValidationError(f"欄位路徑「{token}」目前不可用。") from exc
+
+
+def get_value_for_field_path(record: DataRecord, field_path: FieldPathSpec):
+    if not field_path.is_joined:
+        return record.data.get(field_path.field.slug)
+    relation_value = record.data.get(field_path.relation_field.slug)
+    if relation_value in (None, "") or field_path.relation_field.related_table is None:
+        return None
+    related_record = field_path.relation_field.related_table.records.filter(
+        pk=int(relation_value)
+    ).first()
+    if related_record is None:
+        return None
+    return related_record.data.get(field_path.field.slug)
+
+
+def display_value_for_field_path(record: DataRecord, field_path: FieldPathSpec) -> str:
+    if not field_path.is_joined:
+        return field_path.field.display_value(record.data.get(field_path.field.slug))
+    relation_value = record.data.get(field_path.relation_field.slug)
+    if relation_value in (None, "") or field_path.relation_field.related_table is None:
+        return "-"
+    related_record = field_path.relation_field.related_table.records.filter(
+        pk=int(relation_value)
+    ).first()
+    if related_record is None:
+        return "-"
+    return field_path.field.display_value(related_record.data.get(field_path.field.slug))
+
+
 def normalize_header(header: object, index: int) -> tuple[str, str]:
-    label = str(header).strip() if header not in (None, "") else f"Column {index}"
+    label = str(header).strip() if header not in (None, "") else f"欄位 {index}"
     slug = slugify(label) or f"column_{index}"
     return label, slug
 
@@ -47,7 +138,7 @@ def parse_uploaded_rows(uploaded_file) -> tuple[list[str], list[list[object]]]:
             except UnicodeDecodeError:
                 continue
         else:
-            raise ValidationError("Could not decode CSV file.")
+            raise ValidationError("無法解讀這個 CSV 檔案的編碼。")
         reader = csv.reader(io.StringIO(text))
         rows = [list(row) for row in reader]
     elif filename.endswith(".xlsx"):
@@ -57,10 +148,10 @@ def parse_uploaded_rows(uploaded_file) -> tuple[list[str], list[list[object]]]:
         sheet = workbook.active
         rows = [list(row) for row in sheet.iter_rows(values_only=True)]
     else:
-        raise ValidationError("Only .csv and .xlsx files are supported.")
+        raise ValidationError("目前只支援 .csv 與 .xlsx 檔案。")
 
     if not rows:
-        raise ValidationError("The uploaded file is empty.")
+        raise ValidationError("上傳的檔案是空的。")
     headers = [str(value).strip() if value is not None else "" for value in rows[0]]
     return headers, rows[1:]
 
@@ -94,7 +185,7 @@ def convert_import_value(field: DataField, raw_value):
                 return raw_value
             parsed = parse_date(str(raw_value))
             if parsed is None:
-                raise ValidationError(f"'{raw_value}' is not a valid date for {field.name}.")
+                raise ValidationError(f"「{raw_value}」不是欄位 {field.name} 可接受的日期格式。")
             return parsed
         if field.field_type == DataField.DATETIME:
             if isinstance(raw_value, datetime):
@@ -105,7 +196,7 @@ def convert_import_value(field: DataField, raw_value):
             if parsed is None:
                 parsed_date = parse_date(str(raw_value))
                 if parsed_date is None:
-                    raise ValidationError(f"'{raw_value}' is not a valid datetime for {field.name}.")
+                    raise ValidationError(f"「{raw_value}」不是欄位 {field.name} 可接受的日期時間格式。")
                 return datetime.combine(parsed_date, time.min)
             return parsed
         if field.field_type == DataField.EMAIL:
@@ -114,7 +205,7 @@ def convert_import_value(field: DataField, raw_value):
             return str(raw_value).strip()
         if field.field_type == DataField.RELATION:
             if field.related_table is None:
-                raise ValidationError(f"{field.name} does not have a related table configured.")
+                raise ValidationError(f"欄位 {field.name} 尚未設定關聯資料表。")
             candidate = str(raw_value).strip()
             record = None
             if candidate.isdigit():
@@ -129,18 +220,18 @@ def convert_import_value(field: DataField, raw_value):
                     record = matching[0]
                 elif len(matching) > 1:
                     raise ValidationError(
-                        f"Relation value '{raw_value}' matches multiple records in {field.related_table.name}."
+                        f"關聯值「{raw_value}」在 {field.related_table.name} 中符合多筆記錄。"
                     )
             if record is None:
                 raise ValidationError(
-                    f"Relation value '{raw_value}' could not be matched in {field.related_table.name}."
+                    f"關聯值「{raw_value}」無法在 {field.related_table.name} 中找到對應記錄。"
                 )
             return record.pk
         return raw_value
     except ValidationError:
         raise
     except Exception as exc:
-        raise ValidationError(f"Invalid value '{raw_value}' for {field.name}.") from exc
+        raise ValidationError(f"欄位 {field.name} 的值「{raw_value}」格式不正確。") from exc
 
 
 @transaction.atomic
@@ -149,6 +240,7 @@ def import_rows_to_table(
     headers: list[str],
     rows: list[list[object]],
     *,
+    user=None,
     create_missing_fields: bool = False,
 ) -> dict[str, int]:
     field_map: list[tuple[int, DataField]] = []
@@ -164,8 +256,8 @@ def import_rows_to_table(
         if field is None:
             if not create_missing_fields:
                 raise ValidationError(
-                    f"Column '{label}' does not match an existing field. "
-                    "Enable auto-create missing fields to import it."
+                    f"欄位「{label}」找不到對應的既有欄位。"
+                    "若要匯入，請啟用自動建立缺少欄位。"
                 )
             field = DataField.objects.create(
                 table=table,
@@ -176,6 +268,10 @@ def import_rows_to_table(
             )
             next_order += 10
             created_fields += 1
+        if user is not None and not field.can_edit(user):
+            raise ValidationError(
+                f"你沒有權限匯入資料到欄位「{field.name}」。"
+            )
         field_map.append((index - 1, field))
 
     created_records = 0
@@ -196,7 +292,7 @@ def import_rows_to_table(
                 converted = convert_import_value(field, raw_value)
             except ValidationError as exc:
                 raise ValidationError(
-                    f"Row {row_number}, column '{field.name}': {'; '.join(exc.messages)}"
+                    f"第 {row_number} 列，欄位「{field.name}」：{'；'.join(exc.messages)}"
                 ) from exc
             payload[field.slug] = field.serialize_value(converted)
 
@@ -208,7 +304,7 @@ def import_rows_to_table(
         if missing_required:
             joined = ", ".join(missing_required)
             raise ValidationError(
-                f"Row {row_number} is missing required fields: {joined}."
+                f"第 {row_number} 列缺少必填欄位：{joined}。"
             )
 
         DataRecord.objects.create(table=table, data=payload)
@@ -233,12 +329,12 @@ def parse_condition_value(field: DataField, raw_value: str):
     if field.field_type == DataField.DATE:
         parsed = parse_date(raw_value)
         if parsed is None:
-            raise ValidationError(f"'{raw_value}' is not a valid date.")
+            raise ValidationError(f"「{raw_value}」不是有效的日期格式。")
         return parsed
     if field.field_type == DataField.DATETIME:
         parsed = parse_datetime(raw_value)
         if parsed is None:
-            raise ValidationError(f"'{raw_value}' is not a valid datetime.")
+            raise ValidationError(f"「{raw_value}」不是有效的日期時間格式。")
         return parsed
     if field.field_type == DataField.RELATION:
         if raw_value.isdigit():
@@ -247,8 +343,7 @@ def parse_condition_value(field: DataField, raw_value: str):
     return raw_value.lower()
 
 
-def _normalize_record_value(field: DataField, record: DataRecord):
-    raw_value = record.data.get(field.slug)
+def _normalize_value_for_field(field: DataField, raw_value):
     parsed = field.parse_stored_value(raw_value)
     if field.field_type == DataField.RELATION and raw_value not in (None, ""):
         return {
@@ -260,8 +355,18 @@ def _normalize_record_value(field: DataField, record: DataRecord):
     return parsed
 
 
-def record_matches_condition(record: DataRecord, field: DataField, operator: str, raw_value: str) -> bool:
-    current = _normalize_record_value(field, record)
+def _normalize_record_value(record: DataRecord, field_path: FieldPathSpec):
+    raw_value = get_value_for_field_path(record, field_path)
+    return _normalize_value_for_field(field_path.field, raw_value)
+
+
+def record_matches_condition(
+    record: DataRecord,
+    field_path: FieldPathSpec,
+    operator: str,
+    raw_value: str,
+) -> bool:
+    current = _normalize_record_value(record, field_path)
     if operator == "is_empty":
         return current in (None, "", {})
     if operator == "not_empty":
@@ -271,9 +376,9 @@ def record_matches_condition(record: DataRecord, field: DataField, operator: str
     if operator == "is_false":
         return bool(current) is False
 
-    expected = parse_condition_value(field, raw_value)
+    expected = parse_condition_value(field_path.field, raw_value)
 
-    if field.field_type == DataField.RELATION and isinstance(current, dict):
+    if field_path.field.field_type == DataField.RELATION and isinstance(current, dict):
         if isinstance(expected, int):
             current_value = current["pk"]
         else:
@@ -304,27 +409,36 @@ def record_matches_condition(record: DataRecord, field: DataField, operator: str
     return False
 
 
-def run_query(records, table: DataTable, conditions: list[dict[str, str]], match_mode: str) -> list[DataRecord]:
+def run_query(records, table: DataTable, conditions: list[dict[str, str]], match_mode: str, *, user=None) -> list[DataRecord]:
     active_conditions = [
         condition
         for condition in conditions
-        if condition.get("field") and condition.get("operator")
+        if (condition.get("field_path") or condition.get("field")) and condition.get("operator")
     ]
     if not active_conditions:
         return list(records)
 
-    fields_by_slug = {field.slug: field for field in table.ordered_fields}
+    field_paths = {}
+    if user is None:
+        for field in table.ordered_fields:
+            field_paths[field.slug] = FieldPathSpec(token=field.slug, label=field.name, field=field)
+    else:
+        field_paths = {
+            spec.token: spec
+            for spec in get_accessible_field_paths(table, user, include_joined=True)
+        }
     matched = []
     for record in records:
         checks = []
         for condition in active_conditions:
-            field = fields_by_slug.get(condition["field"])
-            if field is None:
-                continue
+            token = condition.get("field_path") or condition.get("field")
+            field_path = field_paths.get(token)
+            if field_path is None:
+                raise ValidationError(f"欄位路徑「{token}」目前不可用。")
             checks.append(
                 record_matches_condition(
                     record,
-                    field,
+                    field_path,
                     condition["operator"],
                     condition.get("value", ""),
                 )

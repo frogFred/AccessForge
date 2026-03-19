@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.urls import reverse
 
 from .forms import DynamicRecordForm
-from .models import ROLE_EDITOR, DataField, DataRecord, DataTable, TableMembership
+from .models import ROLE_EDITOR, ROLE_OWNER, DataField, DataRecord, DataTable, TableMembership
 from .services import import_rows_to_table, run_query
 
 
@@ -91,3 +93,136 @@ class AccessForgeTests(TestCase):
         self.assertEqual(summary["created_records"], 2)
         self.assertEqual(table.fields.count(), 2)
         self.assertEqual(table.records.count(), 2)
+
+    def test_field_level_permissions_hide_locked_fields_and_preserve_values(self):
+        table = DataTable.objects.create(name="Projects", owner=self.owner)
+        DataField.objects.create(table=table, name="Title", slug="title", field_type=DataField.TEXT)
+        DataField.objects.create(
+            table=table,
+            name="Internal notes",
+            slug="internal_notes",
+            field_type=DataField.TEXT,
+            view_role=ROLE_OWNER,
+            edit_role=ROLE_OWNER,
+        )
+        TableMembership.objects.create(table=table, user=self.editor, role=ROLE_EDITOR)
+        record = DataRecord.objects.create(
+            table=table,
+            data={"title": "Old title", "internal_notes": "Owner only"},
+        )
+
+        form = DynamicRecordForm(
+            data={"title": "New title"},
+            table=table,
+            user=self.editor,
+            instance=record,
+            layout=table.get_or_create_layout(),
+        )
+
+        self.assertNotIn("internal_notes", form.fields)
+        self.assertTrue(form.is_valid(), form.errors)
+        updated = form.save()
+        self.assertEqual(updated.data["title"], "New title")
+        self.assertEqual(updated.data["internal_notes"], "Owner only")
+
+    def test_join_query_can_filter_on_related_field(self):
+        customers = DataTable.objects.create(name="Customers", owner=self.owner, record_label_field_slug="name")
+        DataField.objects.create(table=customers, name="Name", slug="name", field_type=DataField.TEXT)
+        acme = DataRecord.objects.create(table=customers, data={"name": "Acme"})
+        globex = DataRecord.objects.create(table=customers, data={"name": "Globex"})
+
+        orders = DataTable.objects.create(name="Orders", owner=self.owner)
+        DataField.objects.create(table=orders, name="Order no", slug="order_no", field_type=DataField.TEXT)
+        DataField.objects.create(
+            table=orders,
+            name="Customer",
+            slug="customer",
+            field_type=DataField.RELATION,
+            related_table=customers,
+        )
+        match = DataRecord.objects.create(table=orders, data={"order_no": "SO-1", "customer": acme.pk})
+        DataRecord.objects.create(table=orders, data={"order_no": "SO-2", "customer": globex.pk})
+
+        results = run_query(
+            orders.records.order_by("id"),
+            orders,
+            [{"field_path": "customer__name", "operator": "contains", "value": "acme"}],
+            "all",
+            user=self.owner,
+        )
+
+        self.assertEqual([record.pk for record in results], [match.pk])
+
+    def test_import_rejects_non_editable_field_for_editor(self):
+        table = DataTable.objects.create(name="Budgets", owner=self.owner)
+        DataField.objects.create(
+            table=table,
+            name="Budget",
+            slug="budget",
+            field_type=DataField.INTEGER,
+            view_role=ROLE_EDITOR,
+            edit_role=ROLE_OWNER,
+        )
+        TableMembership.objects.create(table=table, user=self.editor, role=ROLE_EDITOR)
+
+        with self.assertRaises(ValidationError):
+            import_rows_to_table(
+                table,
+                ["Budget"],
+                [["1200"]],
+                user=self.editor,
+            )
+
+    def test_query_builder_page_lists_join_paths(self):
+        self.client.force_login(self.owner)
+        customers = DataTable.objects.create(name="Accounts", owner=self.owner)
+        DataField.objects.create(table=customers, name="Name", slug="name", field_type=DataField.TEXT)
+
+        orders = DataTable.objects.create(name="Order index", owner=self.owner)
+        DataField.objects.create(table=orders, name="Order no", slug="order_no", field_type=DataField.TEXT)
+        DataField.objects.create(
+            table=orders,
+            name="Customer",
+            slug="customer",
+            field_type=DataField.RELATION,
+            related_table=customers,
+        )
+
+        response = self.client.get(reverse("accessforge:query-builder", kwargs={"slug": orders.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "可用關聯欄位")
+        self.assertContains(response, "Customer -&gt; Name")
+
+    def test_report_view_renders_joined_columns(self):
+        self.client.force_login(self.owner)
+        customers = DataTable.objects.create(name="Clients", owner=self.owner, record_label_field_slug="name")
+        DataField.objects.create(table=customers, name="Name", slug="name", field_type=DataField.TEXT)
+        acme = DataRecord.objects.create(table=customers, data={"name": "Acme"})
+
+        orders = DataTable.objects.create(name="Sales orders", owner=self.owner)
+        DataField.objects.create(table=orders, name="Order no", slug="order_no", field_type=DataField.TEXT)
+        DataField.objects.create(
+            table=orders,
+            name="Customer",
+            slug="customer",
+            field_type=DataField.RELATION,
+            related_table=customers,
+        )
+        DataRecord.objects.create(table=orders, data={"order_no": "SO-9", "customer": acme.pk})
+
+        response = self.client.get(
+            reverse("accessforge:table-report", kwargs={"slug": orders.slug}),
+            {
+                "title": "Orders by customer",
+                "columns": ["order_no", "customer__name"],
+                "group_by": "customer__name",
+                "show_row_numbers": "on",
+                "show_summary": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Orders by customer")
+        self.assertContains(response, "來源資料表")
+        self.assertContains(response, "Acme")
