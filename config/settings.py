@@ -24,7 +24,7 @@ DEBUG = env_bool("DJANGO_DEBUG", True)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,accessforge.signalis.cloud")
 CSRF_TRUSTED_ORIGINS = env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    "http://localhost:8000,http://127.0.0.1:8000,https://accessforge.signalis.cloud/",
+    "http://localhost:8001,http://127.0.0.1:8001,https://accessforge.signalis.cloud/",
 )
 USE_X_FORWARDED_HOST = env_bool("DJANGO_USE_X_FORWARDED_HOST", False)
 if env_bool("DJANGO_TRUST_X_FORWARDED_PROTO", False):

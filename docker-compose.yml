@@ -24,7 +24,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "${APP_PORT:-8001}:8001"
 
 volumes:
   postgres_data:
